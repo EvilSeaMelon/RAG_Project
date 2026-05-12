@@ -6,9 +6,10 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableWithMessageHistory, RunnableLambda
 
 import config_data as config
-from file_history_store import get_history, truncate_by_token
+# 历史对话功能
+from file_history_store import truncate_by_token
+# 知识库功能
 from vector_stores import VectorStoreService
-from knowledge_base import KnowledgeBaseService
 
 
 def print_prompt(prompt):
@@ -28,9 +29,6 @@ class RagService(object):
         self.vector_service = VectorStoreService(
             DashScopeEmbeddings(model=config.embedding_model)
         )
-
-        # 挂载知识库服务
-        self.knowledge_base = KnowledgeBaseService()
 
         # 提示词模板实例
         self.prompt_template = ChatPromptTemplate.from_messages(
@@ -98,16 +96,16 @@ class RagService(object):
                 | StrOutputParser()
         )
 
-        conversation_chain = RunnableWithMessageHistory(
-            chain,  # 被增强的原有chain
-            get_history,  # 通过会话id获取FileChatMessageHistory类对象
-            input_messages_key="input",  # 表示用户输入在模板中的占位符
-            history_messages_key="history"  # 表示用户输入在模板中的占位符
-        )
+        # conversation_chain = RunnableWithMessageHistory(
+        #     chain,  # 被增强的原有chain
+        #     get_history,  # 通过会话id获取FileChatMessageHistory类对象
+        #     input_messages_key="input",  # 表示用户输入在模板中的占位符
+        #     history_messages_key="history"  # 表示用户输入在模板中的占位符
+        # )
 
         return chain
 
-    #【本次新增的核心代码】：热重载机制
+    # 热重载机制
     def reload_memory(self):
         """
         热重载机制：当有新知识入库时被调用
@@ -119,8 +117,3 @@ class RagService(object):
         self.chain = self.__get_chain()
         print("热重载完成")
 
-if __name__ == '__main__':
-
-    # RunnableWithMessageHistory增强chain后必须传入dict格式
-    r = RagService().chain.invoke({"input":"我身高160cm，体重50kg，白皮肤，怎么穿衣服"}, config.session_config)
-    print(r)

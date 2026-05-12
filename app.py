@@ -328,7 +328,7 @@ elif menu == "智能售后问诊台":
 
             # 2. RAG 对话框
             st.subheader("💬 描述您的问题")
-            issue = st.text_area("故障描述：", placeholder="例如：空调开机后一直滴水，而且不制冷...")
+            issue = st.text_area("请输入文字：", placeholder="例如：空调开机后一直滴水，而且不制冷...")
 
             if st.button("🚀 呼叫智能售后", type="primary"):
                 if not issue:

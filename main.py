@@ -8,16 +8,16 @@ from routers import customer, order, chat, admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 系统启动：正在校验 MySQL 数据库连接与表结构...")
+    print("系统启动")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ 系统就绪：ServiceBrain 后端服务已启动！")
+    print("系统就绪")
     yield
-    print("🛑 系统关闭：正在安全释放 MySQL 连接池...")
+    print("系统关闭：正在安全释放 MySQL 连接池")
     await engine.dispose()
 
 app = FastAPI(
-    title="ServiceBrain 电商智能售后系统",
+    title="电商智能售后系统",
     version="1.0.0",
     description="基于 FastAPI + SQLAlchemy 2.0 的结构化与非结构化问答网关",
     lifespan=lifespan

@@ -85,7 +85,7 @@ class KnowledgeBaseService(object):
         if check_md5(md5):
             return "[跳过]内容已经存在知识库中"
 
-        # 判断是否分割,比max_split_char_number大才分割,不然直接外面包列表，格式相同好操作
+        # 判断是否分割,不然直接外面包列表，格式相同好操作
         if len(data) > config.max_split_char_number:
             # 👇SemanticChunker 切出来也是 List[str]
             knowledge_chunks: list[str] = self.spliter.split_text(data)

@@ -22,7 +22,7 @@ class Customer(Base):
 
 
 # 2. 客户订单/设备台账表 (OrderAsset)
-# 这一步非常关键：记录用户买了什么，这是后续 RAG 精准检索说明书的依据
+# 记录用户买了什么，后续 RAG 精准检索说明书的依据
 class OrderAsset(Base):
     __tablename__ = "order_asset"
 
@@ -46,7 +46,7 @@ class WorkOrder(Base):
     status: Mapped[str] = mapped_column(String(20), default="待处理",comment="工单状态(待处理/AI已解答/人工介入/已完结)")
 
 
-    # 历史对话记录表
+# 历史对话记录表
 class ChatHistory(Base):
     __tablename__ = "chat_history"
 

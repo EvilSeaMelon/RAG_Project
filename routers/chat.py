@@ -40,7 +40,7 @@ async def handle_rag_chat(request: schemas.ChatRequest, db: AsyncSession = Depen
         raise HTTPException(status_code=404, detail="该客户名下无设备。")
 
     # ==========================================
-    # 🌟 2. 从 MySQL 拉取历史聊天记录并转化格式
+    # 2. 从 MySQL 拉取历史聊天记录并转化格式
     # ==========================================
     history_stmt = select(ChatHistory).where(ChatHistory.session_id == request.phone).order_by(ChatHistory.id.asc())
     history_records = (await db.execute(history_stmt)).scalars().all()
