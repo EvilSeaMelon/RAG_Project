@@ -9,6 +9,7 @@ import schemas
 router = APIRouter(prefix="/api/orders", tags=["资产订单管理"])
 
 
+# 增加订单
 @router.post("/", response_model=schemas.OrderAssetResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(order_in: schemas.OrderAssetCreate, db: AsyncSession = Depends(get_db)):
     # 查客户是否存在
@@ -29,7 +30,7 @@ async def create_order(order_in: schemas.OrderAssetCreate, db: AsyncSession = De
     await db.refresh(new_asset)
     return new_asset
 
-
+# 查询订单
 @router.get("/{phone}", response_model=schemas.CustomerDetailResponse)
 async def get_customer_assets(phone: str, db: AsyncSession = Depends(get_db)):
     # 联合查询客户档案及其所有资产

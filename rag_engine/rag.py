@@ -1,7 +1,7 @@
 
 from langchain_community.chat_models import ChatTongyi
 from langchain_community.embeddings import DashScopeEmbeddings
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableWithMessageHistory, RunnableLambda
 
@@ -25,10 +25,28 @@ def print_prompt(prompt):
 class RagService(object):
     def __init__(self):
 
+        # 模型
+        self.chat_model = ChatTongyi(model=config.chat_model)
+
         # 检索向量服务类实例
         self.vector_service = VectorStoreService(
             DashScopeEmbeddings(model=config.embedding_model)
         )
+
+        # ================== 新增：Query 重写，关键词提取链 ==================
+        self.rewrite_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", "你是一个电商售后知识库的检索专家。用户的客诉提问通常包含情绪发泄、口语化表达和冗余词汇。\n"
+                           "请根据用户的原始提问，提取出最核心的【故障现象】和【部件名词】，并结合售后常识，适当补充一两个相关专业同义词（例如'漏雪种'可补充'漏氟','缺冷媒'）。\n"
+                           "请去除所有无意义的停用词（如：怎么办、为什么、啊、昨天刚买的）。\n"
+                           "【严格要求】：你必须仅返回一个合法的 JSON 对象，不要输出任何其他解释性文字。\n"
+                           "JSON 格式如下：\n"
+                           "{{\"search_query\": \"提取的关键词和同义词，用空格隔开\"}}"),
+                ("user", "设备型号：{product_model}\n用户提问：{input}")
+            ]
+        )
+        # query重写链：提示词 -> LLM -> JSON 解析
+        self.rewrite_chain = self.rewrite_prompt | self.chat_model | JsonOutputParser()
 
         # 提示词模板实例
         self.prompt_template = ChatPromptTemplate.from_messages(
@@ -44,9 +62,6 @@ class RagService(object):
                 ("user", "请回答提问：{input}")
             ]
         )
-
-        # 模型
-        self.chat_model = ChatTongyi(model=config.chat_model)
 
         # 将链条方法变成属性
         self.chain = self.__get_chain()
@@ -64,12 +79,36 @@ class RagService(object):
 
             return formatted
 
-        # 加入历史对话增强后的chain只能传入dict，但是retriever需要str，所以加函数转换
         # 隐式地把“设备型号”拼接到用户的提问中去查向量库
+        # ================== 新增query重写：在检索前重写Query ==================
         def format_for_retriever(value):
-            issue = value.get("input", "")
+            original_issue = value.get("input", "")
             model = value.get("product_model", "")
-            return f"{model} {issue}".strip()
+
+            if not original_issue:
+                return model
+
+            try:
+                # 1. 调用重写链，获取提取后的关键词
+                rewrite_result = self.rewrite_chain.invoke({
+                    "product_model": model,
+                    "input": original_issue
+                })
+
+                # 2. 从 JSON 中提取字段
+                search_keywords = rewrite_result.get("search_query", original_issue)
+
+                print(f"\n[Query重写触发]")
+                print(f"   原始提问: {original_issue}")
+                print(f"   重写结果: {search_keywords}\n")
+
+                # 3. 将设备型号与重写后的关键词拼接后返回
+                return f"{model} {search_keywords}".strip()
+
+            except Exception as e:
+                # 如果 LLM 没有返回标准 JSON 或发生错误，退回原始查询方式
+                print(f"Query重写失败，使用原query检索]: {e}")
+                return f"{model} {original_issue}".strip()
 
 
 
@@ -85,6 +124,7 @@ class RagService(object):
             # 触发 Token 滑动窗口，对拿到的全量历史进行动态截断 (预设 1500 Tokens)
             new_value["history"] = truncate_by_token(original_input["history"], max_tokens=1500)
             return new_value
+
 
         chain = (
                 {"input": RunnablePassthrough(),
